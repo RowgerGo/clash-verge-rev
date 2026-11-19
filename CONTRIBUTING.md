@@ -74,18 +74,16 @@ Ubuntu-only system packages:
 sudo apt-get install -y libxslt1.1 libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf
 ```
 
-### Download the Mihomo Core Binary (Automatic)
+### Prepare the Desktop Build Assets
 
 ```bash
 pnpm run prebuild
-pnpm run prebuild --force  # Re-download and overwrite Mihomo core and service binaries
+pnpm run prebuild --force  # Refresh the downloaded assets and rebuild the service
 ```
 
-### Prepare the Development Service Source
-
-`pnpm dev` builds the development service from a sibling checkout of [`clash-verge-service-ipc`](https://github.com/clash-verge-rev/clash-verge-service-ipc). The binaries downloaded by `pnpm prebuild` do not replace this source checkout.
-
-Check the `clash_verge_service_ipc` dependency in [`src-tauri/Cargo.toml`](src-tauri/Cargo.toml), then clone the service repository alongside `clash-verge-rev` and check out the matching tag. If the sibling directory already exists, reuse it and check its version rather than overwriting it. Without this checkout, `pnpm dev` fails when it tries to access `../clash-verge-service-ipc/Cargo.toml`.
+`pnpm prebuild` downloads the Mihomo cores and builds the release service from
+[`crates/dayup-service-ipc`](crates/dayup-service-ipc/). `pnpm dev` builds the
+development service from the same source with the development channel enabled.
 
 ### Run the Development Server
 

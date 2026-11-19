@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <linearGradient id="dayup-tile" x1="0" x2="1" y1="0" y2="1" gradientUnits="objectBoundingBox">
+      <stop stop-color="#293c87"/>
+      <stop offset="1" stop-color="#131d42"/>
+    </linearGradient>
+    <linearGradient id="dayup-route" x1="0" x2="1" y1="1" y2="0" gradientUnits="objectBoundingBox">
+      <stop stop-color="#66ddff"/>
+      <stop offset="1" stop-color="#bbffa8"/>
+    </linearGradient>
+  </defs>
+  <rect x="3" y="3" width="58" height="58" rx="16" fill="url(#dayup-tile)"/>
+  <rect x="3.5" y="3.5" width="57" height="57" rx="15.5" fill="none" stroke="#aabaff" stroke-opacity=".38"/>
+  <path d="M23 44h4c3.4 0 6-1.5 8-4.5l8-13c1.5-2.4 3-3.7 5-4.5" fill="none" stroke="url(#dayup-route)" stroke-width="6" stroke-linecap="round"/>
+  <circle cx="18" cy="44" r="6" fill="#202e6a" stroke="#66ddff" stroke-width="4"/>
+  <circle cx="48" cy="20" r="6" fill="#202e6a" stroke="#bbffa8" stroke-width="4"/>
+</svg>

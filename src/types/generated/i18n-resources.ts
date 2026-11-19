@@ -194,6 +194,25 @@ export interface TranslationResources {
       }
     }
     layout: {
+      account: {
+        expiresAt: string
+        login: string
+        logout: string
+        messages: {
+          expired: string
+          logout_failed: string
+          network: string
+          rate_limited: string
+          request_failed: string
+          tls_required: string
+          unauthorized: string
+        }
+        roles: {
+          admin: string
+          user: string
+        }
+        username: string
+      }
       components: {
         navigation: {
           menu: {
@@ -205,6 +224,7 @@ export interface TranslationResources {
             unlock: string
           }
           tabs: {
+            account: string
             connections: string
             home: string
             logs: string

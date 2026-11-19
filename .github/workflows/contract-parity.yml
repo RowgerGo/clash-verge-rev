@@ -70,9 +70,9 @@ jobs:
 
       - name: Provision sidecar placeholders for tauri-build
         run: |
-          mkdir -p src-tauri/sidecar src-tauri/resources dist
+          mkdir -p src-tauri/sidecar src-tauri/resources/dayup-link dist
           touch dist/index.html
-          for bin in clash-verge-service clash-verge-service-install clash-verge-service-uninstall verge-mihomo verge-mihomo-alpha; do
+          for bin in dayup-link-service dayup-link-service-install dayup-link-service-uninstall dayup-mihomo dayup-mihomo-alpha; do
             touch "src-tauri/sidecar/${bin}-x86_64-unknown-linux-gnu"
           done
 

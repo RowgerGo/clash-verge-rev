@@ -4,13 +4,9 @@ import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 export const developmentServiceDirectoryEnvironment =
-  'CLASH_VERGE_DEV_SERVICE_DIR'
+  'DAYUP_LINK_DEV_SERVICE_DIR'
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-const serviceRepository = resolve(
-  repositoryRoot,
-  '..',
-  'clash-verge-service-ipc',
-)
+const serviceRepository = resolve(repositoryRoot, 'crates', 'dayup-service-ipc')
 const serviceManifest = join(serviceRepository, 'Cargo.toml')
 export const developmentServiceWatchPaths = [
   'src',
@@ -78,9 +74,9 @@ export async function prepareDevelopmentService() {
     }
   }
   const executables = [
-    'clash-verge-service',
-    'clash-verge-service-install',
-    'clash-verge-service-uninstall',
+    'dayup-link-service',
+    'dayup-link-service-install',
+    'dayup-link-service-uninstall',
     'service-integration-driver',
   ].map((name) => {
     const executable = artifacts.get(name)
@@ -107,14 +103,14 @@ export async function ensureDevelopmentService({
   const extension = platform === 'win32' ? '.exe' : ''
   const installer = join(
     serviceDirectory,
-    `clash-verge-service-install${extension}`,
+    `dayup-link-service-install${extension}`,
   )
   const host = execFileSync('rustc', ['-vV'], { encoding: 'utf8' }).match(
     /^host: (.+)$/m,
   )?.[1]
   if (!host) throw new Error('rustc did not report its host target')
   const args = ['--prepare-install', '--ensure']
-  for (const name of ['verge-mihomo', 'verge-mihomo-alpha']) {
+  for (const name of ['dayup-mihomo', 'dayup-mihomo-alpha']) {
     args.push(
       '--core',
       `${name}${extension}`,

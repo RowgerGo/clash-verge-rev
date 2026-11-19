@@ -20,7 +20,7 @@ const SettingPage = () => {
   }
 
   const toGithubRepo = useLockFn(() =>
-    openExternalUrl('https://github.com/clash-verge-rev/clash-verge-rev').catch(
+    openExternalUrl('https://github.com/RowgerGo/clash-verge-rev').catch(
       onError,
     ),
   )
@@ -49,7 +49,7 @@ const SettingPage = () => {
           <IconButton
             size="medium"
             color="inherit"
-            title={t('settings.page.actions.manual')}
+            title={`${t('settings.page.actions.manual')} · Clash Verge Rev`}
             onClick={toGithubDoc}
           >
             <HelpOutlineRounded fontSize="inherit" />
@@ -57,7 +57,7 @@ const SettingPage = () => {
           <IconButton
             size="medium"
             color="inherit"
-            title={t('settings.page.actions.telegram')}
+            title={`${t('settings.page.actions.telegram')} · Clash Verge Rev`}
             onClick={toTelegramChannel}
           >
             <Telegram fontSize="inherit" />

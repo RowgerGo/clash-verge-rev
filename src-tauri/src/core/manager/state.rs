@@ -19,7 +19,7 @@ use tauri_plugin_shell::ShellExt as _;
 
 pub(super) fn explain_core_occupancy(error: anyhow::Error) -> anyhow::Error {
     let detail = error.to_string();
-    if detail.starts_with("process verge-mihomo") && detail.ends_with("; refusing a second core") {
+    if detail.starts_with("process dayup-mihomo") && detail.ends_with("; refusing a second core") {
         error.context(clash_verge_i18n::t!("core.alreadyRunning").into_owned())
     } else {
         error
@@ -182,7 +182,7 @@ impl CoreManager {
         #[cfg(not(target_os = "windows"))]
         let config_file = Config::generate_file().await?;
         let app_handle = handle::Handle::app_handle();
-        let clash_core = Config::verge().await.latest_arc().get_valid_clash_core();
+        let clash_core = Config::verge().await.latest_arc().get_clash_core_binary();
         let config_dir = dirs::app_home_dir()?;
         #[cfg(unix)]
         discard_unwritable_core_cache(&config_dir);
@@ -191,7 +191,7 @@ impl CoreManager {
         let previous_mask = unsafe { tauri_plugin_clash_verge_sysinfo::libc::umask(0o077) };
         let command = app_handle
             .shell()
-            .sidecar(clash_core.as_str())
+            .sidecar(clash_core)
             .map_err(|error| anyhow::anyhow!("failed to build sidecar command for core {clash_core:?}: {error:#}"))?;
         let command = command.args([
             "-d",
@@ -524,8 +524,8 @@ mod readiness_tests {
     #[test]
     fn core_occupancy_explanation_preserves_the_original_error() {
         for detail in [
-            "process verge-mihomo remains after IPC failure; refusing a second core",
-            "process verge-mihomo-alpha.exe (PID 123) is still running; refusing a second core",
+            "process dayup-mihomo remains after IPC failure; refusing a second core",
+            "process dayup-mihomo-alpha.exe (PID 123) is still running; refusing a second core",
         ] {
             let error = super::explain_core_occupancy(anyhow::anyhow!(detail));
             assert_eq!(error.to_string(), clash_verge_i18n::t!("core.alreadyRunning"));

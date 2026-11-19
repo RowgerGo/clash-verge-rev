@@ -1,4 +1,4 @@
-import { getName, getVersion } from '@tauri-apps/api/app'
+import { getVersion } from '@tauri-apps/api/app'
 import { fetch } from '@tauri-apps/plugin-http'
 import { asyncRetry } from 'foxts/async-retry'
 import { extractErrorMessage } from 'foxts/extract-error-message'
@@ -6,14 +6,14 @@ import { once } from 'foxts/once'
 import i18n from 'i18next'
 
 import { debugLog } from '@/utils/debug'
+import { name as appName } from '@root/package.json'
 
 const getUserAgentPromise = once(async () => {
   try {
-    const [name, version] = await Promise.all([getName(), getVersion()])
-    return `${name}/${version}`
+    return `${appName}/${await getVersion()}`
   } catch (error) {
     console.debug('Failed to build User-Agent, fallback to default', error)
-    return 'clash-verge-rev'
+    return appName
   }
 })
 // Get current IP and geolocation information （refactored IP detection with service-specific mappings）

@@ -127,7 +127,10 @@ async fn notify_existing_instance(record: &InstanceRecord) -> bool {
     };
     #[cfg(not(target_os = "macos"))]
     let request = if let Some(arg) = std::env::args().nth(1).as_deref() {
-        if arg.starts_with("clash:") {
+        if arg
+            .split_once(':')
+            .is_some_and(|(scheme, _)| scheme.eq_ignore_ascii_case(crate::constants::DEEP_LINK_SCHEME))
+        {
             client
                 .get(format!("http://127.0.0.1:{}/commands/scheme", record.port))
                 .query(&[("param", arg)])

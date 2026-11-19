@@ -95,6 +95,17 @@ async fn resolve_setup() {
     Handle::refresh_clash();
     refresh_tray_menu().await;
     resolve_done();
+
+    #[cfg(any(windows, target_os = "linux"))]
+    {
+        use tauri_plugin_deep_link::DeepLinkExt as _;
+
+        if let Ok(Some(urls)) = Handle::app_handle().deep_link().get_current()
+            && let Some(url) = urls.first()
+        {
+            resolve_scheme(url.as_ref()).await;
+        }
+    }
 }
 
 pub async fn resolve_reset_async() -> Result<(), anyhow::Error> {
@@ -170,9 +181,11 @@ async fn init_silent_updater() {
     use crate::core::SilentUpdater;
     use crate::core::handle::Handle;
 
-    logging!(debug, Type::Setup, "Initializing silent updater...");
-
     let app_handle = Handle::app_handle();
+    if !SilentUpdater::is_configured(app_handle) {
+        return;
+    }
+    logging!(debug, Type::Setup, "Initializing silent updater...");
 
     // Install cached updates before starting background checks.
     if SilentUpdater::global().try_install_on_startup(app_handle).await {

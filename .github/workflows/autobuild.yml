@@ -293,10 +293,8 @@ jobs:
           restore-keys: |
             pnpm-shared-stable-${{ matrix.os }}-${{ matrix.target }}
 
-      - name: Pnpm install and check
-        run: |
-          pnpm i
-          pnpm run prebuild ${{ matrix.target }}
+      - name: Install pnpm dependencies
+        run: pnpm i
 
       - name: Release ${{ env.TAG_CHANNEL }} Version
         run: pnpm release-version autobuild-latest
@@ -361,6 +359,7 @@ jobs:
             export PKG_CONFIG_PATH=/usr/lib/arm-linux-gnueabihf/pkgconfig/:$PKG_CONFIG_PATH
             export PKG_CONFIG_SYSROOT_DIR=/usr/arm-linux-gnueabihf/
           fi
+          pnpm run prebuild ${{ matrix.target }}
           pnpm build --target ${{ matrix.target }}
         env:
           NODE_OPTIONS: '--max_old_space_size=4096'

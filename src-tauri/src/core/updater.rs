@@ -32,6 +32,17 @@ impl SilentUpdater {
     pub fn is_update_ready(&self) -> bool {
         self.update_ready.load(Ordering::Acquire)
     }
+
+    pub(crate) fn is_configured(app_handle: &tauri::AppHandle) -> bool {
+        app_handle
+            .config()
+            .plugins
+            .0
+            .get("updater")
+            .and_then(|config| config.get("endpoints"))
+            .and_then(serde_json::Value::as_array)
+            .is_some_and(|endpoints| !endpoints.is_empty())
+    }
 }
 
 #[derive(Serialize, Deserialize, specta::Type)]
@@ -314,6 +325,9 @@ impl SilentUpdater {
     /// Checks the server; Windows receives `/LANG` to suppress the NSIS language dialog,
     /// see `packages/windows/installer.nsi`.
     async fn check(app_handle: &tauri::AppHandle) -> Result<Option<Update>> {
+        if !Self::is_configured(app_handle) {
+            return Ok(None);
+        }
         let updater_builder = app_handle.updater_builder();
         #[cfg(target_os = "windows")]
         let updater_builder = {
@@ -516,7 +530,7 @@ impl SilentUpdater {
         use tauri::{WebviewUrl, WebviewWindowBuilder};
 
         let window = match WebviewWindowBuilder::new(app_handle, "update-splash", WebviewUrl::App("index.html".into()))
-            .title("Clash Verge - Updating")
+            .title("Dayup Link - Updating")
             .inner_size(300.0, 180.0)
             .resizable(false)
             .maximizable(false)

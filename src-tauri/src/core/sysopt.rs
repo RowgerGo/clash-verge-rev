@@ -190,12 +190,21 @@ fn skip_without_network_service(enabling: bool, outcome: sysproxy::Result<()>) -
     }
 }
 
-/// Force both proxy kinds off, in one blocking hop.
-async fn disable_all_proxies(sys: Sysproxy, auto: Autoproxy) -> Result<()> {
+async fn disable_all_proxies(mut sys: Sysproxy, mut auto: Autoproxy, require_owned: bool) -> Result<()> {
     tokio::task::spawn_blocking(move || {
+        if require_owned {
+            match owns_enabled_proxy(&sys, &auto) {
+                Ok(true) => {}
+                Ok(false) => return Ok(()),
+                Err(error) if proxy_control::is_missing_network_service(&error) => return Ok(()),
+                Err(error) => return Err(error.into()),
+            }
+        }
+        sys.enable = false;
+        auto.enable = false;
         disable_both(
-            || skip_without_network_service(sys.enable, sys.set_system_proxy()).map(|_reached_os| ()),
-            || skip_without_network_service(auto.enable, auto.set_auto_proxy()).map(|_reached_os| ()),
+            || skip_without_network_service(false, sys.set_system_proxy()).map(|_reached_os| ()),
+            || skip_without_network_service(false, auto.set_auto_proxy()).map(|_reached_os| ()),
         )
     })
     .await?
@@ -238,6 +247,31 @@ async fn current_os_proxy_state(sys: Sysproxy, auto: Autoproxy) -> OsProxyState 
             logging!(warn, Type::Core, "failed to read OS proxy state: {join_error}");
             OsProxyState::DifferentOrUnknown
         })
+}
+
+#[cfg(target_os = "macos")]
+fn owns_enabled_proxy(sys: &Sysproxy, auto: &Autoproxy) -> sysproxy::Result<bool> {
+    let snapshot = Sysproxy::snapshot()?;
+    Ok(if auto.enable {
+        snapshot.matches_pac(auto)
+    } else {
+        snapshot.matches_global(sys)
+    })
+}
+
+#[cfg(not(target_os = "macos"))]
+fn owns_enabled_proxy(sys: &Sysproxy, auto: &Autoproxy) -> sysproxy::Result<bool> {
+    if auto.enable {
+        let current = Autoproxy::get_auto_proxy()?;
+        return Ok(current.enable && current.url == auto.url && !Sysproxy::get_system_proxy()?.enable);
+    }
+    if sys.enable {
+        let current = Sysproxy::get_system_proxy()?;
+        return Ok(current.enable
+            && current.host.eq_ignore_ascii_case(sys.host.trim_matches(['[', ']']))
+            && current.port == sys.port);
+    }
+    Ok(false)
 }
 
 pub(crate) struct Sysopt {
@@ -379,7 +413,7 @@ impl Sysopt {
             error,
             earlier_step_completed,
             |state| self.recover_guard_after_failure(state, guard_was_running),
-            || disable_all_proxies(off.0, off.1),
+            || disable_all_proxies(off.0, off.1, false),
         )
         .await
     }
@@ -416,6 +450,9 @@ impl Sysopt {
     pub(super) async fn update_sysproxy(&self) -> Result<()> {
         let _lock = self.update_lock.lock().await;
         let verge = Config::verge().await.latest_arc();
+        if !verge.enable_system_proxy.unwrap_or_default() {
+            return self.reset_owned_sysproxy().await;
+        }
         // Configured, not live: this runs while the Core is being started or restarted, and
         // asking a Core that is not up yet would only fall back here anyway.
         let port = MixedPort::desired().await;
@@ -423,45 +460,30 @@ impl Sysopt {
         // 先 await, 避免持有锁导致的 Send 问题
         let bypass = get_bypass().await;
 
-        let (sys_enable, pac_enable, proxy_host, proxy_guard) = (
-            verge.enable_system_proxy.unwrap_or_default(),
+        let (pac_enable, proxy_host, proxy_guard) = (
             verge.proxy_auto_config.unwrap_or_default(),
             verge.proxy_host.as_deref().unwrap_or("127.0.0.1"),
             verge.enable_proxy_guard.unwrap_or_default(),
         );
 
-        let (sys, auto, guard_type) = {
-            let (sys, auto) = &mut *self.inner_proxy.write();
-            sys.host = proxy_host.into();
-            sys.port = port;
-            sys.bypass = bypass.into();
-            auto.url = format!("http://{proxy_host}:{pac_port}/commands/pac");
-
-            // `enable_system_proxy` is the master switch.
-            // When disabled, force clear both global proxy and PAC at OS level.
-            let guard_type = if !sys_enable {
-                sys.enable = false;
-                auto.enable = false;
-                GuardType::None
-            } else if pac_enable {
-                sys.enable = false;
-                auto.enable = true;
-                if proxy_guard {
-                    GuardType::Autoproxy(auto.clone())
-                } else {
-                    GuardType::None
-                }
+        let sys = Sysproxy {
+            host: proxy_host.into(),
+            port,
+            bypass: bypass.into(),
+            enable: !pac_enable,
+        };
+        let auto = Autoproxy {
+            url: format!("http://{proxy_host}:{pac_port}/commands/pac"),
+            enable: pac_enable,
+        };
+        let guard_type = if proxy_guard {
+            if pac_enable {
+                GuardType::Autoproxy(auto.clone())
             } else {
-                sys.enable = true;
-                auto.enable = false;
-                if proxy_guard {
-                    GuardType::Sysproxy(sys.clone())
-                } else {
-                    GuardType::None
-                }
-            };
-
-            (sys.clone(), auto.clone(), guard_type)
+                GuardType::Sysproxy(sys.clone())
+            }
+        } else {
+            GuardType::None
         };
 
         let _guard_operation = self.guard_operation_lock.lock().await;
@@ -476,21 +498,15 @@ impl Sysopt {
             && drained
             && current_os_proxy_state(sys.clone(), auto.clone()).await == OsProxyState::AlreadyApplied
         {
+            *self.inner_proxy.write() = (sys, auto);
             self.access_guard().write().set_guard_type(guard_type);
             return Ok(());
         }
 
         let apply_steps = proxy_apply_steps(sys.enable, auto.enable);
 
-        // Prepare the disabled state used to compensate a partial write.
-        let compensation = {
-            let (mut off_sys, mut off_auto) = (sys.clone(), auto.clone());
-            off_sys.enable = false;
-            off_auto.enable = false;
-            (off_sys, off_auto)
-        };
-
         // Only a step that actually wrote is evidence the OS changed; a skipped one is not.
+        let target = (sys.clone(), auto.clone());
         let applied = tokio::task::spawn_blocking(move || {
             let mut earlier_step_reached_os = false;
             for step in apply_steps {
@@ -511,18 +527,19 @@ impl Sysopt {
             Ok(Ok(())) => {}
             Ok(Err((earlier_step_completed, error))) => {
                 return Err(self
-                    .recover_from_failed_write(error, earlier_step_completed, guard_was_running, compensation)
+                    .recover_from_failed_write(error, earlier_step_completed, guard_was_running, target)
                     .await);
             }
             Err(join_error) => {
                 let error = anyhow::Error::from(join_error).context("the system proxy write task did not finish");
                 return Err(self
-                    .recover_from_failed_write(error, false, guard_was_running, compensation)
+                    .recover_from_failed_write(error, false, guard_was_running, target)
                     .await);
             }
         }
 
         // Never point the guard at a target that failed to reach the OS.
+        *self.inner_proxy.write() = target;
         self.access_guard().write().set_guard_type(guard_type);
         Ok(())
     }
@@ -540,31 +557,25 @@ impl Sysopt {
             self.reset_sysproxy.store(false, Ordering::SeqCst);
         }
         let _lock = self.update_lock.lock().await;
+        self.reset_owned_sysproxy().await
+    }
+
+    async fn reset_owned_sysproxy(&self) -> Result<()> {
         let _guard_operation = self.guard_operation_lock.lock().await;
         let drained = self.stop_proxy_guard_locked().await;
-
-        // 直接关闭所有代理
-        let (sys, auto) = {
-            let (sys, auto) = &mut *self.inner_proxy.write();
-            sys.enable = false;
-            auto.enable = false;
-            (sys.clone(), auto.clone())
-        };
-
-        // The match is trustworthy only after the guard drained.
-        if cfg!(target_os = "macos")
-            && drained
-            && current_os_proxy_state(sys.clone(), auto.clone()).await == OsProxyState::AlreadyApplied
-        {
+        let (sys, auto) = self.inner_proxy.read().clone();
+        if !sys.enable && !auto.enable {
             return Ok(());
         }
 
         disable_until_the_last_write_is_ours(
             drained,
-            || disable_all_proxies(sys.clone(), auto.clone()),
+            || disable_all_proxies(sys.clone(), auto.clone(), true),
             || self.stop_proxy_guard_locked(),
         )
-        .await
+        .await?;
+        *self.inner_proxy.write() = (Sysproxy::default(), Autoproxy::default());
+        Ok(())
     }
 }
 

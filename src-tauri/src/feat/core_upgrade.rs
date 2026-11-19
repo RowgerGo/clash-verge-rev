@@ -42,10 +42,10 @@ pub struct CoreUpgradeReport {
 
 pub async fn upgrade_core(force: bool) -> Result<CoreUpgradeReport> {
     let _serialized = UPGRADE_LOCK.lock().await;
-    let core = Config::verge().await.latest_arc().get_valid_clash_core();
+    let core = Config::verge().await.latest_arc().get_clash_core_binary();
     tracing::Span::current().record("core", tracing::field::display(&core));
     let alpha = core.ends_with("-alpha");
-    let target = managed_core_path(&core)?;
+    let target = managed_core_path(core)?;
 
     // A core already broken by the in-place updater cannot report a version; upgrading is the repair.
     let installed = read_core_version(&target).unwrap_or_else(|error| {

@@ -1,9 +1,24 @@
+import { readFileSync } from 'node:fs'
 import path from 'node:path'
+import { parseEnv } from 'node:util'
 
 import legacy from '@vitejs/plugin-legacy'
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 import svgr from 'vite-plugin-svgr'
+
+const { url } = parseEnv(
+  readFileSync(new URL('./.env/account.env', import.meta.url), 'utf8'),
+)
+const accountApiUrl = URL.parse(url ?? '')
+if (
+  accountApiUrl?.protocol !== 'https:' ||
+  accountApiUrl.username ||
+  accountApiUrl.password ||
+  accountApiUrl.href !== `${accountApiUrl.origin}/`
+) {
+  throw new Error('.env/account.env must set url to an HTTPS origin')
+}
 
 export default defineConfig({
   root: 'src',
@@ -39,5 +54,8 @@ export default defineConfig({
   },
   define: {
     OS_PLATFORM: `"${process.platform}"`,
+    'import.meta.env.XRAY_ACCOUNT_API_URL': JSON.stringify(
+      accountApiUrl.origin,
+    ),
   },
 })

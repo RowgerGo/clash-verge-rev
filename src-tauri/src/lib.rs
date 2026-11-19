@@ -166,7 +166,7 @@ pub fn run() -> std::process::ExitCode {
         utils::dirs::preinit_app_data_dir().and_then(|root| core::owner_identity::repair_app_data_root_owner(&root))
     {
         // The logger is installed later in setup(), so this would otherwise be lost.
-        eprintln!("[clash-verge] 应用数据目录所有权修复失败: {error:#}");
+        eprintln!("[dayup-link] 应用数据目录所有权修复失败: {error:#}");
         logging!(error, Type::Setup, "应用数据目录所有权修复失败: {error:#}");
     }
 
@@ -190,7 +190,7 @@ pub fn run() -> std::process::ExitCode {
                     .map(|s| (*s).to_string())
                     .or_else(|| panic.downcast_ref::<String>().cloned())
                     .unwrap_or_else(|| "unknown panic payload".to_string());
-                eprintln!("[clash-verge] panic during app setup ({stage}), continuing in degraded mode: {msg}");
+                eprintln!("[dayup-link] panic during app setup ({stage}), continuing in degraded mode: {msg}");
                 logging!(
                     error,
                     Type::Setup,
@@ -271,7 +271,7 @@ pub fn run() -> std::process::ExitCode {
 
             #[cfg(target_os = "macos")]
             if let Some(window) = _app_handle.get_webview_window("main") {
-                let _ = window.set_title("Clash Verge");
+                let _ = window.set_title(crate::constants::APP_NAME);
             }
         }
 

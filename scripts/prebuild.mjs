@@ -6,11 +6,9 @@ import path from 'node:path'
 import zlib from 'node:zlib'
 
 import AdmZip from 'adm-zip'
-import { glob } from 'glob'
 import { HttpsProxyAgent } from 'https-proxy-agent'
 import { extract } from 'tar'
 
-import { resolveServiceRelease } from './service-release.mjs'
 import { log_debug, log_error, log_info, log_success } from './utils.mjs'
 
 /** Prepares platform resources, caching versions and unchanged files unless `--force` is used. */
@@ -64,7 +62,7 @@ const SIDECAR_HOST = target
       .toString()
       .match(/(?<=host: ).+(?=\s*)/g)[0]
 
-const RESOURCES_DIR = path.join(cwd, 'src-tauri', 'resources')
+const RESOURCES_DIR = path.join(cwd, 'src-tauri', 'resources', 'dayup-link')
 const SIDECAR_DIR = path.join(cwd, 'src-tauri', 'sidecar')
 // Linux service binaries are bundled as externalBin sidecars (see tauri.linux.conf.json)
 const SERVICE_DIR = platform === 'linux' ? SIDECAR_DIR : RESOURCES_DIR
@@ -277,8 +275,8 @@ function clashMetaAlpha() {
   const isWin = platform === 'win32'
   const urlExt = isWin ? 'zip' : 'gz'
   return {
-    name: 'verge-mihomo-alpha',
-    targetFile: `verge-mihomo-alpha-${SIDECAR_HOST}${isWin ? '.exe' : ''}`,
+    name: 'dayup-mihomo-alpha',
+    targetFile: `dayup-mihomo-alpha-${SIDECAR_HOST}${isWin ? '.exe' : ''}`,
     exeFile: `${name}${isWin ? '.exe' : ''}`,
     zipFile: `${name}-${META_ALPHA_VERSION}.${urlExt}`,
     downloadURL: `${META_ALPHA_URL_PREFIX}/${name}-${META_ALPHA_VERSION}.${urlExt}`,
@@ -290,8 +288,8 @@ function clashMeta() {
   const isWin = platform === 'win32'
   const urlExt = isWin ? 'zip' : 'gz'
   return {
-    name: 'verge-mihomo',
-    targetFile: `verge-mihomo-${SIDECAR_HOST}${isWin ? '.exe' : ''}`,
+    name: 'dayup-mihomo',
+    targetFile: `dayup-mihomo-${SIDECAR_HOST}${isWin ? '.exe' : ''}`,
     exeFile: `${name}${isWin ? '.exe' : ''}`,
     zipFile: `${name}-${META_VERSION}.${urlExt}`,
     downloadURL: `${META_URL_PREFIX}/${META_VERSION}/${name}-${META_VERSION}.${urlExt}`,
@@ -508,47 +506,10 @@ const resolvePlugin = async () => {
   }
 }
 
-// Service executable permissions
-const resolveServicePermission = async () => {
-  const serviceExecutables = [
-    'clash-verge-service*',
-    'clash-verge-service-install*',
-    'clash-verge-service-uninstall*',
-  ]
-  const hashCache = await loadHashCache()
-  let hasChanges = false
-
-  for (const f of serviceExecutables) {
-    const files = glob.sync(path.join(SERVICE_DIR, f))
-    for (const filePath of files) {
-      if (fs.existsSync(filePath)) {
-        const currentHash = await calculateFileHash(filePath)
-        const cacheKey = `${filePath}_chmod`
-        if (!FORCE && hashCache[cacheKey] === currentHash) {
-          continue
-        }
-        try {
-          execSync(`chmod 755 ${filePath}`)
-          log_success(`chmod finished: "${filePath}"`)
-        } catch (e) {
-          log_error(`chmod failed for ${filePath}:`, e.message)
-        }
-        hashCache[cacheKey] = currentHash
-        hasChanges = true
-      }
-    }
-  }
-
-  if (hasChanges) {
-    await saveHashCache(hashCache)
-  }
-}
-
-// Other resources
 const SERVICE_BINARIES = [
-  'clash-verge-service',
-  'clash-verge-service-install',
-  'clash-verge-service-uninstall',
+  'dayup-link-service',
+  'dayup-link-service-install',
+  'dayup-link-service-uninstall',
 ]
 
 function serviceFileInfo(name) {
@@ -558,19 +519,6 @@ function serviceFileInfo(name) {
     sourceFile: `${name}${ext}`,
     targetFile: `${name}${suffix}${ext}`,
   }
-}
-
-async function findExtractedFile(dir, fileName) {
-  const entries = await fsp.readdir(dir, { withFileTypes: true })
-  for (const entry of entries) {
-    const entryPath = path.join(dir, entry.name)
-    if (entry.isFile() && entry.name === fileName) return entryPath
-    if (entry.isDirectory()) {
-      const found = await findExtractedFile(entryPath, fileName)
-      if (found) return found
-    }
-  }
-  return null
 }
 
 async function resolveServiceBundle() {
@@ -590,79 +538,39 @@ async function resolveServiceBundle() {
     .split(/\r?\n/)
     .find((line) => line.trimStart().startsWith('clash_verge_service_ipc ='))
   const sourcePath = serviceDependency?.match(/\bpath\s*=\s*"([^"]+)"/)?.[1]
-  if (sourcePath) {
-    const manifest = path.resolve(cwd, 'src-tauri', sourcePath, 'Cargo.toml')
-    const targetDirectory = path.join(cwd, 'target', 'bundled-service')
-    execFileSync(
-      'cargo',
-      [
-        'build',
-        '--manifest-path',
-        manifest,
-        '--target-dir',
-        targetDirectory,
-        '--target',
-        SIDECAR_HOST,
-        '--release',
-        '--features',
-        'standalone,client',
-        '--bins',
-      ],
-      { stdio: 'inherit' },
+  if (!sourcePath)
+    throw new Error(
+      'The bundled service must use the local Dayup Link service source',
     )
-    await fsp.mkdir(SERVICE_DIR, { recursive: true })
-    for (const { sourceFile, targetPath } of files) {
-      await fsp.copyFile(
-        path.join(targetDirectory, SIDECAR_HOST, 'release', sourceFile),
-        targetPath,
-      )
-      if (platform !== 'win32') await fsp.chmod(targetPath, 0o755)
-      await updateHashCache(targetPath)
-    }
-    return
-  }
-  const { archiveFile, downloadURL } = resolveServiceRelease(
-    cargoManifest,
-    SIDECAR_HOST,
-    platform,
+
+  const manifest = path.resolve(cwd, 'src-tauri', sourcePath, 'Cargo.toml')
+  const targetDirectory = path.join(cwd, 'target', 'bundled-service')
+  execFileSync(
+    'cargo',
+    [
+      'build',
+      '--manifest-path',
+      manifest,
+      '--target-dir',
+      targetDirectory,
+      '--target',
+      SIDECAR_HOST,
+      '--release',
+      '--locked',
+      '--features',
+      'standalone,client',
+      ...SERVICE_BINARIES.flatMap((name) => ['--bin', name]),
+    ],
+    { stdio: 'inherit' },
   )
-  const tempDir = path.join(TEMP_DIR, 'clash-verge-service-ipc')
-  const tempArchive = path.join(tempDir, archiveFile)
-
-  await fsp.mkdir(tempDir, { recursive: true })
   await fsp.mkdir(SERVICE_DIR, { recursive: true })
-
-  try {
-    await downloadFile(downloadURL, tempArchive)
-
-    if (platform === 'win32') {
-      const zip = new AdmZip(tempArchive)
-      zip
-        .getEntries()
-        .forEach(
-          (entry) =>
-            void log_debug('"clash-verge-service-ipc" entry:', entry.entryName),
-        )
-      zip.extractAllTo(tempDir, true)
-    } else {
-      await extract({ cwd: tempDir, file: tempArchive })
-    }
-
-    for (const { sourceFile, targetFile, targetPath } of files) {
-      const extractedFile = await findExtractedFile(tempDir, sourceFile)
-      if (!extractedFile) {
-        throw new Error(`Expected binary ${sourceFile} not found in archive`)
-      }
-
-      await fsp.copyFile(extractedFile, targetPath)
-      if (platform !== 'win32') await fsp.chmod(targetPath, 0o755)
-      await updateHashCache(targetPath)
-      log_success(`Extracted service file: ${targetFile}`)
-    }
-
-    log_success(`service bundle finished: ${archiveFile}`)
-  } finally {
-    await fsp.rm(tempDir, { recursive: true, force: true })
+  for (const { sourceFile, targetPath } of files) {
+    await fsp.copyFile(
+      path.join(targetDirectory, SIDECAR_HOST, 'release', sourceFile),
+      targetPath,
+    )
+    if (platform !== 'win32') await fsp.chmod(targetPath, 0o755)
+    await updateHashCache(targetPath)
   }
 }
 
@@ -679,8 +587,8 @@ const CORE_HASHES_NSH = path.join(
 async function resolveCoreHashes() {
   const lines = []
   for (const [define, name] of [
-    ['MIHOMO_SHA256', 'verge-mihomo'],
-    ['MIHOMO_ALPHA_SHA256', 'verge-mihomo-alpha'],
+    ['MIHOMO_SHA256', 'dayup-mihomo'],
+    ['MIHOMO_ALPHA_SHA256', 'dayup-mihomo-alpha'],
   ]) {
     const sidecar = path.join(SIDECAR_DIR, `${name}-${SIDECAR_HOST}.exe`)
     const digest = createHash('sha256')
@@ -731,13 +639,13 @@ const resolveUnSetDnsScript = () =>
 
 const tasks = [
   {
-    name: 'verge-mihomo-alpha',
+    name: 'dayup-mihomo-alpha',
     func: () =>
       getLatestAlphaVersion().then(() => resolveSidecar(clashMetaAlpha())),
     retry: 5,
   },
   {
-    name: 'verge-mihomo',
+    name: 'dayup-mihomo',
     func: () =>
       getLatestReleaseVersion().then(() => resolveSidecar(clashMeta())),
     retry: 5,
@@ -757,12 +665,6 @@ const tasks = [
     winOnly: true,
   },
   {
-    name: 'service_chmod',
-    func: resolveServicePermission,
-    retry: 5,
-    unixOnly: platform === 'linux' || platform === 'darwin',
-  },
-  {
     name: 'set_dns_script',
     func: resolveSetDnsScript,
     retry: 5,
@@ -779,10 +681,8 @@ const tasks = [
 async function runTask() {
   const task = tasks.shift()
   if (!task) return
-  if (task.unixOnly && platform === 'win32') return runTask()
   if (task.winOnly && platform !== 'win32') return runTask()
   if (task.macosOnly && platform !== 'darwin') return runTask()
-  if (task.linuxOnly && platform !== 'linux') return runTask()
 
   for (let i = 0; i < task.retry; i++) {
     try {

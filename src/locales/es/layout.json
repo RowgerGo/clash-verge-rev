@@ -9,6 +9,7 @@
         "rules": "Normas",
         "logs": "Registros",
         "unlock": "Descubrir",
+        "account": "Cuenta",
         "settings": "Ajustes"
       },
       "menu": {
@@ -22,15 +23,15 @@
     },
     "serviceMigration": {
       "locationRefusedMessage": "El servicio no puede iniciar el núcleo porque su ruta de instalación o los permisos del directorio no superaron una comprobación de seguridad. Reinstale el servicio para restaurar sus archivos y permisos e inténtelo de nuevo. Windows puede solicitar autorización de administrador.",
-      "notAutoStartedMessage": "El tipo de inicio del servicio de Clash Verge se cambió a Manual o Deshabilitado (a menudo por herramientas de optimización), por lo que ya no se inicia con Windows; esta sesión usa Sidecar. Reinstale el servicio para restaurar el inicio automático. Windows puede solicitar autorización de administrador.",
+      "notAutoStartedMessage": "El tipo de inicio del servicio de Dayup Link se cambió a Manual o Deshabilitado (a menudo por herramientas de optimización), por lo que ya no se inicia con Windows; esta sesión usa Sidecar. Reinstale el servicio para restaurar el inicio automático. Windows puede solicitar autorización de administrador.",
       "title": "Service update required",
-      "message": "The Clash Verge service version does not match the version required by this app. Choose Reinstall Service to uninstall the existing service and install the required version, or continue with Sidecar for this session.",
+      "message": "The Dayup Link service version does not match the version required by this app. Choose Reinstall Service to uninstall the existing service and install the required version, or continue with Sidecar for this session.",
       "checkingMessage": "Checking the system service status and current running mode. Please wait…",
-      "unavailableMessage": "The required Clash Verge service is not available. Install or repair it, or continue with Sidecar for this session.",
+      "unavailableMessage": "The required Dayup Link service is not available. Install or repair it, or continue with Sidecar for this session.",
       "reinstall": "Reinstall service",
       "repair": "Repair service",
       "continueSidecar": "Continue with Sidecar",
-      "success": "The Clash Verge service was updated successfully",
+      "success": "The Dayup Link service was updated successfully",
       "errors": {
         "actionFailed": "La operación del servicio falló",
         "stateRefreshFailed": "No se pudo actualizar el estado del servicio",
@@ -41,15 +42,34 @@
     },
     "sysproxyPrivilege": {
       "title": "No se pudo configurar el proxy del sistema",
-      "message": "macOS rechazó el cambio por falta de permisos. Al instalar el servicio de Clash Verge, este aplicará los cambios de proxy como administrador y este aviso no volverá a aparecer.",
-      "serviceReadyMessage": "El servicio de Clash Verge está listo, pero el núcleo sigue ejecutándose como sidecar, por eso se rechazó la configuración del proxy. Cambiar al modo servicio lo resuelve sin reinstalar.",
+      "message": "macOS rechazó el cambio por falta de permisos. Al instalar el servicio de Dayup Link, este aplicará los cambios de proxy como administrador y este aviso no volverá a aparecer.",
+      "serviceReadyMessage": "El servicio de Dayup Link está listo, pero el núcleo sigue ejecutándose como sidecar, por eso se rechazó la configuración del proxy. Cambiar al modo servicio lo resuelve sin reinstalar.",
       "alternative": "Otra opción: desactiva «requerir contraseña de administrador para acceder a los ajustes de todo el sistema» en Ajustes del Sistema → Privacidad y seguridad → Avanzado.",
       "later": "Más tarde",
       "installing": "Instalando el servicio del sistema. Puede pedir una contraseña de administrador.",
       "restarting": "Servicio instalado. Reiniciando el núcleo a través de él…",
       "applying": "Aplicando tu cambio de proxy del sistema…",
       "tunTitle": "El modo TUN necesita el servicio del sistema",
-      "tunMessage": "El modo TUN necesita el servicio del sistema de Clash Verge para gestionar el tráfico de red. Una vez instalado, se activará el modo TUN por ti."
+      "tunMessage": "El modo TUN necesita el servicio del sistema de Dayup Link para gestionar el tráfico de red. Una vez instalado, se activará el modo TUN por ti."
+    }
+  },
+  "account": {
+    "username": "Nombre de usuario",
+    "login": "Iniciar sesión",
+    "logout": "Cerrar sesión",
+    "expiresAt": "La sesión caduca el {{date}}",
+    "roles": {
+      "admin": "Administrador",
+      "user": "Usuario"
+    },
+    "messages": {
+      "unauthorized": "El nombre de usuario o la contraseña no son correctos.",
+      "rate_limited": "Demasiados intentos de inicio de sesión. Inténtalo más tarde.",
+      "tls_required": "El servidor requiere una conexión segura.",
+      "network": "No se pudo conectar con el servidor de cuentas.",
+      "request_failed": "No se pudo iniciar sesión. Inténtalo de nuevo.",
+      "expired": "Tu sesión ha caducado. Vuelve a iniciar sesión.",
+      "logout_failed": "Se cerró la sesión en este dispositivo. El servidor no confirmó el cierre."
     }
   },
   "feedback": {

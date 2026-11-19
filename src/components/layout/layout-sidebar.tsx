@@ -3,12 +3,12 @@ import { Box, List, Menu, MenuItem, SvgIcon } from '@mui/material'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import iconDark from '@/assets/image/icon_dark.svg?react'
-import iconLight from '@/assets/image/icon_light.svg?react'
+import AppIcon from '@/assets/image/icon.svg?react'
 import LogoSvg from '@/assets/image/logo.svg?react'
 import { useVerge } from '@/hooks/use-verge'
 import { useNavMenuOrder } from '@/pages/_layout/hooks'
 import { navItems } from '@/pages/_navigation'
+import { appUpdatesEnabled } from '@/services/update'
 
 import { SortableItem } from '../base'
 
@@ -134,7 +134,7 @@ export const LayoutSidebar = (props: LayoutSidebarProps) => {
           }}
         >
           <SvgIcon
-            component={isDark ? iconDark : iconLight}
+            component={AppIcon}
             style={{
               height: '36px',
               width: '36px',
@@ -146,7 +146,7 @@ export const LayoutSidebar = (props: LayoutSidebarProps) => {
           />
           <LogoSvg fill={isDark ? 'white' : 'black'} />
         </div>
-        <UpdateButton className="the-newbtn" />
+        {appUpdatesEnabled && <UpdateButton className="the-newbtn" />}
       </div>
 
       {/* Edit navigation menu badge */}

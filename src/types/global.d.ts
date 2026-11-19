@@ -13,6 +13,10 @@ type Platform =
 
 declare const OS_PLATFORM: Platform
 
+interface ImportMetaEnv {
+  readonly XRAY_ACCOUNT_API_URL: string
+}
+
 type ValidationOutcome = import('@/services/bindings').ValidationOutcome
 
 interface IConfigData {

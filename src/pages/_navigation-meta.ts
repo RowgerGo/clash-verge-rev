@@ -18,6 +18,10 @@ export const navigationItems = {
     label: 'layout.components.navigation.tabs.unlock',
     path: '/unlock',
   },
+  account: {
+    label: 'layout.components.navigation.tabs.account',
+    path: '/account',
+  },
   settings: {
     label: 'layout.components.navigation.tabs.settings',
     path: '/settings',

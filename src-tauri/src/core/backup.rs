@@ -107,7 +107,7 @@ impl WebDavClient {
                     .use_rustls_tls()
                     .danger_accept_invalid_certs(true)
                     .timeout(Duration::from_secs(op.timeout()))
-                    .user_agent(format!("clash-verge/{APP_VERSION} ({OS} WebDAV-Client)"))
+                    .user_agent(format!("dayup-link/{APP_VERSION} ({OS} WebDAV-Client)"))
                     .redirect(reqwest::redirect::Policy::custom(|attempt| {
                         if attempt.previous().len() >= 5 {
                             attempt.error("重定向次数过多")
@@ -271,7 +271,7 @@ fn parse_webdav_list(xml: &str) -> Result<Vec<ListEntity>, reqwest_dav::Error> {
 pub async fn create_backup() -> Result<(String, PathBuf), Error> {
     let now = chrono::Local::now().format("%Y-%m-%d_%H-%M-%S").to_string();
     let zip_file_name: String = format!("{OS}-backup-{now}.zip").into();
-    let zip_path = temp_dir().join(zip_file_name.as_str());
+    let zip_path = temp_dir().join(format!("dayup-link-{zip_file_name}"));
 
     let value = zip_path.clone();
     let file = AsyncHandler::spawn_blocking(move || std::fs::File::create(&value)).await??;

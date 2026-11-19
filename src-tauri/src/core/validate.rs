@@ -22,13 +22,13 @@ const SYNTAX_CHECK_TIMEOUT: std::time::Duration = std::time::Duration::from_secs
 static LAST_VALIDATED: LazyLock<parking_lot::Mutex<Option<u64>>> = LazyLock::new(|| parking_lot::Mutex::new(None));
 
 async fn validation_fingerprint(yaml: &str) -> u64 {
-    let core = Config::verge().await.latest_arc().get_valid_clash_core();
+    let core = Config::verge().await.latest_arc().get_clash_core_binary();
     let mut hasher = DefaultHasher::new();
     yaml.hash(&mut hasher);
-    core.as_str().hash(&mut hasher);
+    core.hash(&mut hasher);
     let binary = std::env::current_exe()
         .into_iter()
-        .map(|exe| exe.with_file_name(format!("{}{}", core.as_str(), std::env::consts::EXE_SUFFIX)));
+        .map(|exe| exe.with_file_name(format!("{core}{}", std::env::consts::EXE_SUFFIX)));
     // The test run reads geo databases from the app dir; a geo update must revalidate.
     let geo = dirs::app_home_dir().into_iter().flat_map(|dir| {
         super::runtime_bundle::GEO_ASSETS
@@ -357,7 +357,7 @@ impl CoreConfigValidator {
 
         logging!(info, Type::Validate, "开始验证配置文件: {}", config_path);
 
-        let clash_core = Config::verge().await.latest_arc().get_valid_clash_core();
+        let clash_core = Config::verge().await.latest_arc().get_clash_core_binary();
         logging!(info, Type::Validate, "使用内核: {}", clash_core);
 
         let app_handle = handle::Handle::app_handle();
@@ -365,7 +365,7 @@ impl CoreConfigValidator {
         let app_dir_str = dirs::path_to_str(&app_dir)?;
         logging!(info, Type::Validate, "验证目录: {}", app_dir_str);
 
-        let command = app_handle.shell().sidecar(clash_core.as_str()).map_err(|error| {
+        let command = app_handle.shell().sidecar(clash_core).map_err(|error| {
             anyhow::anyhow!("failed to build validation command for core {clash_core:?}: {error:#}")
         })?;
         let command = command.args(["-t", "-d", app_dir_str, "-f", config_path]);

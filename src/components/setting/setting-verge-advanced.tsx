@@ -15,7 +15,7 @@ import {
 } from '@/services/cmds'
 import { mutate } from '@/services/mutate'
 import { showNotice } from '@/services/notice-service'
-import { checkUpdateSafe as checkUpdate } from '@/services/update'
+import { appUpdatesEnabled, checkUpdateSafe } from '@/services/update'
 import { version } from '@root/package.json'
 
 import { BackupViewer } from './mods/backup-viewer'
@@ -46,7 +46,7 @@ const SettingVergeAdvanced = ({ onError: _ }: Props) => {
 
   const onCheckUpdate = async () => {
     try {
-      const info = await checkUpdate()
+      const info = await checkUpdateSafe()
       updateLastCheckTime()
       if (!info?.available) {
         showNotice.success(
@@ -85,7 +85,7 @@ const SettingVergeAdvanced = ({ onError: _ }: Props) => {
       <HotkeyViewer ref={hotkeyRef} />
       <MiscViewer ref={miscRef} />
       <LayoutViewer ref={layoutRef} />
-      <UpdateViewer ref={updateRef} />
+      {appUpdatesEnabled && <UpdateViewer ref={updateRef} />}
       <BackupViewer ref={backupRef} />
       <LiteModeViewer ref={liteModeRef} />
 
@@ -126,10 +126,12 @@ const SettingVergeAdvanced = ({ onError: _ }: Props) => {
         label={t('settings.components.verge.advanced.fields.openLogsDir')}
       />
 
-      <SettingItem
-        onClick={onCheckUpdate}
-        label={t('settings.components.verge.advanced.fields.checkUpdates')}
-      />
+      {appUpdatesEnabled && (
+        <SettingItem
+          onClick={onCheckUpdate}
+          label={t('settings.components.verge.advanced.fields.checkUpdates')}
+        />
+      )}
 
       <SettingItem
         onClick={() => {

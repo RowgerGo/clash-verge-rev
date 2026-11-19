@@ -248,8 +248,8 @@ fn path_entry_exists_without_follow(path: &Path) -> std::io::Result<bool> {
 }
 
 #[cfg(target_os = "macos")]
-fn macos_service_install_markers() -> Vec<String> {
-    vec![
+fn macos_service_install_markers() -> [String; 2] {
+    [
         format!(
             "/Library/LaunchDaemons/{}.plist",
             clash_verge_service_ipc::MACOS_SERVICE_ID
@@ -258,10 +258,6 @@ fn macos_service_install_markers() -> Vec<String> {
             "/Library/PrivilegedHelperTools/{}.bundle",
             clash_verge_service_ipc::MACOS_SERVICE_ID
         ),
-        #[cfg(not(feature = "verge-dev"))]
-        "/Library/LaunchDaemons/io.github.clashverge.helper.plist".to_owned(),
-        #[cfg(not(feature = "verge-dev"))]
-        "/Library/PrivilegedHelperTools/io.github.clashverge.helper".to_owned(),
     ]
 }
 
@@ -470,9 +466,7 @@ where
     let mut source_file = std::fs::File::open(source)
         .with_context(|| format!("failed to open development Service core source {}", source.display()))?;
 
-    let staging_directory = home
-        .join("Applications/.clash-verge-rev-dev")
-        .join(staging_directory_name);
+    let staging_directory = home.join("Applications/.dayup-link-dev").join(staging_directory_name);
     std::fs::create_dir_all(&staging_directory).with_context(|| {
         format!(
             "failed to create development Service core staging directory {}",
@@ -586,11 +580,11 @@ fn packaged_service_tool_path(file_name: &str, packaged_path: impl FnOnce() -> R
     #[cfg(feature = "verge-dev")]
     {
         drop(packaged_path);
-        let directory = std::env::var_os("CLASH_VERGE_DEV_SERVICE_DIR")
-            .context("CLASH_VERGE_DEV_SERVICE_DIR is missing from the development session")?;
+        let directory = std::env::var_os("DAYUP_LINK_DEV_SERVICE_DIR")
+            .context("DAYUP_LINK_DEV_SERVICE_DIR is missing from the development session")?;
         let directory = PathBuf::from(directory);
         if !directory.is_absolute() {
-            bail!("CLASH_VERGE_DEV_SERVICE_DIR must be an absolute path");
+            bail!("DAYUP_LINK_DEV_SERVICE_DIR must be an absolute path");
         }
         Ok(directory.join(file_name))
     }
@@ -610,8 +604,8 @@ fn uninstall_service() -> Result<()> {
     use runas::Command as RunasCommand;
     use std::os::windows::process::CommandExt as _;
 
-    let uninstall_path = packaged_service_tool_path("clash-verge-service-uninstall.exe", || {
-        Ok(dirs::service_path()?.with_file_name("clash-verge-service-uninstall.exe"))
+    let uninstall_path = packaged_service_tool_path("dayup-link-service-uninstall.exe", || {
+        Ok(dirs::service_path()?.with_file_name("dayup-link-service-uninstall.exe"))
     })?;
 
     if !uninstall_path.exists() {
@@ -639,8 +633,8 @@ fn uninstall_service() -> Result<()> {
 fn uninstall_service() -> Result<()> {
     logging!(info, Type::Service, "uninstall service");
 
-    let uninstall_path = packaged_service_tool_path("clash-verge-service-uninstall", || {
-        Ok(tauri::utils::platform::current_exe()?.with_file_name("clash-verge-service-uninstall"))
+    let uninstall_path = packaged_service_tool_path("dayup-link-service-uninstall", || {
+        Ok(tauri::utils::platform::current_exe()?.with_file_name("dayup-link-service-uninstall"))
     })?;
 
     if !uninstall_path.exists() {
@@ -698,8 +692,8 @@ fn linux_running_as_root() -> bool {
 fn uninstall_service() -> Result<()> {
     logging!(info, Type::Service, "uninstall service");
 
-    let uninstall_path = packaged_service_tool_path("clash-verge-service-uninstall", || {
-        Ok(dirs::service_path()?.with_file_name("clash-verge-service-uninstall"))
+    let uninstall_path = packaged_service_tool_path("dayup-link-service-uninstall", || {
+        Ok(dirs::service_path()?.with_file_name("dayup-link-service-uninstall"))
     })?;
 
     if !uninstall_path.exists() {
@@ -733,8 +727,8 @@ fn uninstall_service() -> Result<()> {
 
 fn install_service() -> Result<()> {
     let executable = current_exe()?;
-    let cores = crate::config::IVerge::VALID_CLASH_CORES
-        .iter()
+    let cores = [crate::constants::files::MIHOMO, crate::constants::files::MIHOMO_ALPHA]
+        .into_iter()
         .map(|core| {
             let name = format!("{core}{}", std::env::consts::EXE_SUFFIX);
             clash_verge_service_ipc::management::CoreSource {
@@ -747,7 +741,7 @@ fn install_service() -> Result<()> {
 }
 
 fn invoke_service_install(cores: &[clash_verge_service_ipc::management::CoreSource], core_only: bool) -> Result<()> {
-    let name = format!("clash-verge-service-install{}", std::env::consts::EXE_SUFFIX);
+    let name = format!("dayup-link-service-install{}", std::env::consts::EXE_SUFFIX);
     let installer = packaged_service_tool_path(&name, || {
         #[cfg(target_os = "linux")]
         let executable = tauri::utils::platform::current_exe()?;
@@ -820,11 +814,11 @@ pub(crate) fn run_privileged_service_action(action: PendingAction) -> Result<()>
 /// Builds the same runtime bundle description for both service start and staging.
 async fn collect_service_runtime_bundle(config_file: &Path) -> Result<RuntimeBundle> {
     let verge_config = Config::verge().await;
-    let clash_core = verge_config.latest_arc().get_valid_clash_core();
+    let clash_core = verge_config.latest_arc().get_clash_core_binary();
     drop(verge_config);
 
     let bin_ext = if cfg!(windows) { ".exe" } else { "" };
-    let bin_path = service_core_path(&clash_core, bin_ext)?;
+    let bin_path = service_core_path(clash_core, bin_ext)?;
     collect_runtime_bundle(config_file, &bin_path).await
 }
 
@@ -849,7 +843,7 @@ pub(super) async fn stage_runtime_by_service(config_file: &Path) -> Result<Stage
 
     let response = clash_verge_service_ipc::stage_runtime(&credentials, &session, &runtime)
         .await
-        .context("无法连接到Clash Verge Service")?;
+        .context("无法连接到Dayup Link Service")?;
     if response.code > 0 {
         return Ok(StageRequest::Refused {
             code: response.code,
@@ -859,7 +853,7 @@ pub(super) async fn stage_runtime_by_service(config_file: &Path) -> Result<Stage
     response
         .data
         .map(StageRequest::Answered)
-        .context("Clash Verge Service 未返回运行时暂存结果")
+        .context("Dayup Link Service 未返回运行时暂存结果")
 }
 
 #[derive(Debug)]
@@ -920,7 +914,7 @@ pub(super) async fn start_with_existing_service(config_file: &Path) -> Result<()
         Err(error) => {
             tracing::Span::current().record("outcome", "ipc-unreachable");
             start_owner_monitor();
-            return Err(error).context("无法连接到Clash Verge Service");
+            return Err(error).context("无法连接到Dayup Link Service");
         }
     };
 
@@ -955,7 +949,7 @@ pub(super) async fn start_with_existing_service(config_file: &Path) -> Result<()
         ));
     }
 
-    let result = response.data.context("Clash Verge Service 未返回会话信息")?;
+    let result = response.data.context("Dayup Link Service 未返回会话信息")?;
     tracing::Span::current().record("generation", result.session.generation);
     let capabilities = probe_service_capabilities().await;
     tracing::Span::current().record("staging", capabilities.runtime_staging);
@@ -1013,7 +1007,7 @@ pub(super) async fn get_clash_logs_by_service() -> Result<Vec<String>> {
         clash_verge_service_ipc::get_clash_logs(&credentials)
     })
     .await;
-    let response = response.context("无法连接到Clash Verge Service")?;
+    let response = response.context("无法连接到Dayup Link Service")?;
 
     if response.code > 0 {
         if response.code == clash_verge_service_ipc::ServiceErrorCode::NotActive as u16 {
@@ -1032,7 +1026,7 @@ pub(crate) async fn get_clash_log_snapshot_by_service() -> Result<String> {
         clash_verge_service_ipc::get_clash_log_snapshot(&credentials)
     })
     .await;
-    let response = response.context("无法连接到Clash Verge Service")?;
+    let response = response.context("无法连接到Dayup Link Service")?;
     if response.code > 0 {
         if response.code == clash_verge_service_ipc::ServiceErrorCode::NotActive as u16 {
             recover_after_owner_loss(generation, OwnerRecoveryReason::Displaced, None).await;
@@ -1400,7 +1394,7 @@ async fn read_chunk(
     };
     let response = clash_verge_service_ipc::read_runtime_file(credentials, session, &request)
         .await
-        .context("无法连接到Clash Verge Service")?;
+        .context("无法连接到Dayup Link Service")?;
     if response.code == ServiceErrorCode::NotActive as u16
         || response.code == ServiceErrorCode::StaleOwnerSession as u16
     {
@@ -1559,7 +1553,7 @@ pub(super) async fn stop_core_by_service() -> Result<()> {
         Ok(response) => response,
         Err(error) => {
             start_owner_monitor();
-            return Err(error).context("无法连接到Clash Verge Service");
+            return Err(error).context("无法连接到Dayup Link Service");
         }
     };
 
@@ -1597,7 +1591,7 @@ pub(crate) async fn update_writer_by_service(writer: &WriterConfig) -> Result<()
     let session = active_service_session()?;
     let response = clash_verge_service_ipc::update_writer(&credentials, &session, writer)
         .await
-        .context("无法连接到Clash Verge Service")?;
+        .context("无法连接到Dayup Link Service")?;
     if response.code > 0 {
         logging!(
             warn,
@@ -1623,7 +1617,7 @@ pub(super) async fn set_system_proxy_by_service_with_session(
     let credentials = current_owner_credentials()?;
     let response = clash_verge_service_ipc::set_system_proxy(&credentials, session, proxy)
         .await
-        .context("无法连接到Clash Verge Service")?;
+        .context("无法连接到Dayup Link Service")?;
     if response.code > 0 {
         logging!(
             warn,
@@ -1634,7 +1628,7 @@ pub(super) async fn set_system_proxy_by_service_with_session(
         );
         bail!(response.message);
     }
-    response.data.context("Clash Verge Service 未返回系统代理结果")
+    response.data.context("Dayup Link Service 未返回系统代理结果")
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -2179,12 +2173,12 @@ mod tests {
     }
 
     fn staging_directory(home: &Path) -> PathBuf {
-        home.join("Applications/.clash-verge-rev-dev/service-core")
+        home.join("Applications/.dayup-link-dev/service-core")
     }
 
     #[cfg(unix)]
     fn service_tools_staging_directory(home: &Path) -> PathBuf {
-        home.join("Applications/.clash-verge-rev-dev/service-tools")
+        home.join("Applications/.dayup-link-dev/service-tools")
     }
 
     #[cfg(unix)]
@@ -2231,7 +2225,7 @@ mod tests {
 
         assert_eq!(
             selected,
-            home.join("Applications/.clash-verge-rev-dev/service-core/verge-mihomo")
+            home.join("Applications/.dayup-link-dev/service-core/verge-mihomo")
         );
         assert_eq!(std::fs::read(&selected)?, b"development core");
         let metadata = std::fs::symlink_metadata(&selected)?;
@@ -2247,14 +2241,14 @@ mod tests {
 
         let root = TestDirectory::new("development-service-tool")?;
         let home = root.path().join("home");
-        let source = root.path().join("clash-verge-service-install");
+        let source = root.path().join("dayup-link-service-install");
         std::fs::write(&source, b"development installer")?;
 
         let selected = service_tool_path_for(&source, Some(&home), true)?;
 
         assert_eq!(
             selected,
-            service_tools_staging_directory(&home).join("clash-verge-service-install")
+            service_tools_staging_directory(&home).join("dayup-link-service-install")
         );
         assert_eq!(std::fs::read(&selected)?, b"development installer");
         assert_ne!(std::fs::metadata(&selected)?.permissions().mode() & 0o111, 0);
@@ -2271,7 +2265,7 @@ mod tests {
         let selected = service_core_path_for(&source, Some(&home), true)?;
         assert_eq!(
             selected,
-            home.join("Applications/.clash-verge-rev-dev/service-core/verge-mihomo")
+            home.join("Applications/.dayup-link-dev/service-core/verge-mihomo")
         );
 
         std::fs::write(&source, b"second core")?;
@@ -2328,7 +2322,7 @@ mod tests {
         let home = root.path().join("home");
         let source = root.path().join("verge-mihomo");
         std::fs::write(&source, b"selected core")?;
-        let final_path = home.join("Applications/.clash-verge-rev-dev/service-core/verge-mihomo");
+        let final_path = home.join("Applications/.dayup-link-dev/service-core/verge-mihomo");
         std::fs::create_dir_all(final_path.parent().unwrap_or_else(|| Path::new(".")))?;
         let symlink_target = root.path().join("must-not-change");
         std::fs::write(&symlink_target, b"target bytes")?;
@@ -2545,11 +2539,11 @@ mod tests {
 
     #[cfg(target_os = "macos")]
     #[test]
-    fn legacy_socket_alone_is_not_install_evidence() {
+    fn macos_install_evidence_is_scoped_to_this_service() {
         assert!(
-            !super::macos_service_install_markers()
+            super::macos_service_install_markers()
                 .iter()
-                .any(|marker| marker == "/tmp/verge/clash-verge-service.sock")
+                .all(|marker| marker.contains(clash_verge_service_ipc::MACOS_SERVICE_ID))
         );
     }
 

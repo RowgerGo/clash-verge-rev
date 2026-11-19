@@ -1,4 +1,5 @@
 [workspace]
+exclude = ["crates/dayup-service-ipc"]
 members = [
   "src-tauri",
   "crates/clash-verge-draft",

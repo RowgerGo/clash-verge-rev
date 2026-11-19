@@ -7,6 +7,9 @@ import { compareVersions as compareSemver } from 'compare-versions'
 
 import { version as appVersion } from '@root/package.json'
 
+// Enable once Dayup Link provides its own signed update feed.
+export const appUpdatesEnabled = false
+
 const SEMVER_FULL_REGEX =
   /^\d+(?:\.\d+){1,2}(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/
 const SEMVER_SEARCH_REGEX =
@@ -72,6 +75,7 @@ const localVersionNormalized = normalizeVersion(appVersion)
 export const checkUpdateSafe = async (
   options?: CheckOptions,
 ): Promise<Update | null> => {
+  if (!appUpdatesEnabled) return null
   const result = await check(options ?? {})
   if (!result) return null
 
